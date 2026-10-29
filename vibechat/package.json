@@ -1,0 +1,39 @@
+{
+  "name": "vibechat",
+  "version": "1.0.0",
+  "private": true,
+  "description": "VibeChat — случайный видеочат 1 на 1 на WebRTC",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "node scripts/build-client.mjs",
+    "build:server": "tsc -p tsconfig.server.json",
+    "start": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning dist/server/server/src/index.js",
+    "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.client.json --noEmit",
+    "test": "node --disable-warning=ExperimentalWarning --import tsx --test \"server/test/*.test.ts\" \"client/test/*.test.ts\"",
+    "test:e2e": "node --disable-warning=ExperimentalWarning e2e/webrtc.e2e.mjs",
+    "admin:create": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning --import tsx scripts/create-admin.ts",
+    "test:browser": "node --disable-warning=ExperimentalWarning e2e/browser-suite.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@types/ws": "^8.5.13",
+    "esbuild": "^0.25.0",
+    "playwright": "^1.50.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "tailwindcss": "^4.1.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

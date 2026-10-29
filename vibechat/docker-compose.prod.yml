@@ -1,0 +1,70 @@
+# Production на одном VPS: приложение + HTTPS (Caddy, автоматические сертификаты) + свой TURN (coturn).
+# Запуск: docker compose -f docker-compose.prod.yml up -d --build
+# Перед запуском заполните .env (DOMAIN, PUBLIC_IP, PUBLIC_ORIGIN, SESSION_SECRET, TURN_*).
+
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      TRUST_PROXY: '1'
+      DATA_DIR: /app/data
+    volumes:
+      - app-data:/app/data
+    expose:
+      - '8080'
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [app]
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      DOMAIN: ${DOMAIN:?укажите DOMAIN в .env}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+  # TURN-сервер. Работает в сети хоста: ему нужны UDP-порты 3478 и 49160–49400.
+  coturn:
+    image: coturn/coturn:4.6-alpine
+    restart: unless-stopped
+    network_mode: host
+    command:
+      - -n
+      - --log-file=stdout
+      - --listening-port=3478
+      - --min-port=49160
+      - --max-port=49400
+      - --fingerprint
+      - --use-auth-secret
+      - --static-auth-secret=${TURN_SECRET:?укажите TURN_SECRET в .env}
+      - --realm=${DOMAIN}
+      - --external-ip=${PUBLIC_IP:?укажите PUBLIC_IP в .env}
+      - --no-cli
+      - --no-multicast-peers
+      - --no-tlsv1
+      - --no-tlsv1_1
+      - --stale-nonce=600
+      - --user-quota=12
+      - --total-quota=1200
+      # Запрещаем ретрансляцию во внутренние сети (защита от SSRF через TURN).
+      - --denied-peer-ip=0.0.0.0-0.255.255.255
+      - --denied-peer-ip=10.0.0.0-10.255.255.255
+      - --denied-peer-ip=100.64.0.0-100.127.255.255
+      - --denied-peer-ip=127.0.0.0-127.255.255.255
+      - --denied-peer-ip=169.254.0.0-169.254.255.255
+      - --denied-peer-ip=172.16.0.0-172.31.255.255
+      - --denied-peer-ip=192.168.0.0-192.168.255.255
+      - --denied-peer-ip=::1
+
+volumes:
+  app-data:
+  caddy-data:
+  caddy-config:

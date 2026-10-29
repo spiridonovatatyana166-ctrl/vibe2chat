@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- app_name задаётся в build.gradle.kts (vibechatAppName). -->
+    <string name="setup_title">Подключение к серверу</string>
+    <string name="setup_hint">Введите адрес вашего сервера. Он должен начинаться с https://</string>
+    <string name="setup_placeholder">https://vibechat.example.com</string>
+    <string name="setup_connect">Подключиться</string>
+    <string name="error_title">Нет связи с сервером</string>
+    <string name="error_offline">Проверьте подключение к интернету и попробуйте снова.</string>
+    <string name="error_generic">Сервер не отвечает. Попробуйте ещё раз через минуту.</string>
+    <string name="retry">Повторить</string>
+    <string name="change_server">Изменить адрес сервера</string>
+    <string name="permission_denied">Без доступа к камере и микрофону видеочат не работает. Разрешите его в настройках приложения.</string>
+    <string name="open_settings">Открыть настройки</string>
+    <string name="external_link_failed">Не удалось открыть ссылку</string>
+    <string name="url_error_empty">Введите адрес</string>
+    <string name="url_error_https">Адрес должен начинаться с https://</string>
+    <string name="url_error_invalid">Некорректный адрес</string>
+</resources>
