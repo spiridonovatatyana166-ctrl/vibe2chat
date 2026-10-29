@@ -39,7 +39,7 @@ async function verifyTurnstile(ctx: AppContext, token: string | undefined, ip: s
   }
 }
 
-/** Временные TURN-учётки по схеме TURN REST API (coturn use-auth-secret). */
+/** Временные TURN-учётки по схеме TURN REST API (coturn use-auth-secret, Open Relay). */
 export function buildIceConfig(ctx: AppContext, gid: string): IceConfig {
   const c = ctx.config;
   const iceServers: IceConfig['iceServers'] = [];
@@ -55,6 +55,57 @@ export function buildIceConfig(ctx: AppContext, gid: string): IceConfig {
     }
   }
   return { iceServers, iceTransportPolicy: c.iceTransportPolicy, ttlSeconds: c.turnTtlSeconds };
+}
+
+type CloudflareIce = { iceServers?: { urls?: string | string[]; username?: string; credential?: string }[] | { urls?: string | string[]; username?: string; credential?: string } };
+
+let cloudflareCache: { servers: IceConfig['iceServers']; expires: number } | null = null;
+
+/**
+ * Cloudflare Realtime TURN: учётки выдаёт API Cloudflare. Кэшируем на сервере,
+ * чтобы не дергать API на каждый звонок. При ошибке API звонок не ломается —
+ * остаются STUN и прочие TURN.
+ */
+async function cloudflareIceServers(ctx: AppContext): Promise<IceConfig['iceServers']> {
+  const cf = ctx.config.cloudflareTurn;
+  if (!cf) return [];
+  if (cloudflareCache && cloudflareCache.expires > Date.now()) return cloudflareCache.servers;
+  const ttl = ctx.config.turnTtlSeconds;
+  try {
+    const r = await fetch(
+      `https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(cf.keyId)}/credentials/generate-ice-servers`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${cf.apiToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ttl }),
+        signal: AbortSignal.timeout(5000),
+      },
+    );
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = (await r.json()) as CloudflareIce;
+    const list = Array.isArray(data.iceServers) ? data.iceServers : data.iceServers ? [data.iceServers] : [];
+    const servers: IceConfig['iceServers'] = list
+      .map((s) => ({
+        urls: (Array.isArray(s.urls) ? s.urls : s.urls ? [s.urls] : []).filter(
+          // Порт 53 часто блокируется браузерами — убираем его, как советует Cloudflare.
+          (u) => !/:53(\?|$)/.test(u),
+        ),
+        username: s.username,
+        credential: s.credential,
+      }))
+      .filter((s) => s.urls.length > 0);
+    cloudflareCache = { servers, expires: Date.now() + (ttl * 1000) / 2 };
+    return servers;
+  } catch (err) {
+    ctx.log.error('cloudflare turn credentials failed', { err });
+    return [];
+  }
+}
+
+export async function iceConfigFor(ctx: AppContext, gid: string): Promise<IceConfig> {
+  const base = buildIceConfig(ctx, gid);
+  const cf = await cloudflareIceServers(ctx);
+  return { ...base, iceServers: [...base.iceServers, ...cf] };
 }
 
 export function registerSessionRoutes(router: Router, ctx: AppContext): void {
@@ -103,10 +154,10 @@ export function registerSessionRoutes(router: Router, ctx: AppContext): void {
     return { ok: true };
   });
 
-  router.get('/api/ice', (rc): IceConfig => {
+  router.get('/api/ice', async (rc): Promise<IceConfig> => {
     const gid = currentGuest(ctx, rc);
     if (!gid) throw new HttpError(401, 'Нет сессии');
     if (!iceLimiter.take(rc.ipHash)) throw new HttpError(429, 'Слишком часто');
-    return buildIceConfig(ctx, gid);
+    return iceConfigFor(ctx, gid);
   });
 }

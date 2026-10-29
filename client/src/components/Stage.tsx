@@ -92,6 +92,22 @@ function Overlay({ children, dim = true }: { children: ReactNode; dim?: boolean 
   );
 }
 
+/** Если соединение идёт дольше обычного — объясняем, что происходит. */
+function SlowHint() {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setSlow(true), 8000);
+    return () => clearTimeout(t);
+  }, []);
+  if (!slow) return null;
+  return (
+    <p className="mt-3 animate-fade-in text-sm text-white/60">
+      Прямое соединение не получается, пробуем через ретранслятор. Если не выйдет за ~20 секунд — найдём другого
+      собеседника.
+    </p>
+  );
+}
+
 function Searching({ language, onCancel }: { language: LanguageCode; onCancel: () => void }) {
   return (
     <Overlay dim={false}>
@@ -244,6 +260,7 @@ export function Stage({
         <Overlay dim={false}>
           <Spinner className="mx-auto mb-4 size-8 text-white" />
           <p className="text-lg font-semibold text-white">Собеседник найден, подключаемся…</p>
+          <SlowHint key={state.roomId ?? ''} />
           {state.partnerLanguage && state.partnerLanguage !== 'any' && (
             <p className="mt-2 text-sm text-white/60">Язык собеседника: {languageLabel(state.partnerLanguage)}</p>
           )}

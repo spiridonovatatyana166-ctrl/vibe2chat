@@ -24,7 +24,8 @@ services:
         sync: false
       - key: ADMIN_BOOTSTRAP_PASSWORD
         sync: false
-      # Необязательно: бесплатный TURN от Metered (500 МБ/мес)
+      # Ретранслятор (TURN): по умолчанию сервер сам подключает бесплатный Open Relay.
+      # Для своего TURN заполните поля ниже, для Cloudflare — CLOUDFLARE_TURN_KEY_ID и CLOUDFLARE_TURN_API_TOKEN.
       - key: TURN_URLS
         sync: false
       - key: TURN_USERNAME

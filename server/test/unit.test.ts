@@ -121,6 +121,18 @@ describe('конфигурация', () => {
     assert.equal(c.publicOrigin, 'https://vibechat.onrender.com');
   });
 
+  it('без своего TURN подключается бесплатный публичный, его можно выключить', () => {
+    const c = loadConfig({});
+    assert.equal(c.publicTurn, true);
+    assert.ok(c.turnUrls.some((u) => u.includes('openrelay')));
+    assert.ok(c.turnSecret);
+    const off = loadConfig({ PUBLIC_TURN: 'off' });
+    assert.equal(off.turnUrls.length, 0);
+    const own = loadConfig({ TURN_URLS: 'turn:my.example.com', TURN_SECRET: 's' });
+    assert.equal(own.publicTurn, false);
+    assert.deepEqual(own.turnUrls, ['turn:my.example.com']);
+  });
+
   it('TURN без учётных данных — ошибка', () => {
     assert.throws(() => loadConfig({ TURN_URLS: 'turn:t.example.com' }), /TURN_SECRET/);
   });

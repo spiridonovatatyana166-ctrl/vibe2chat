@@ -271,6 +271,11 @@ export class Hub {
         return;
       }
 
+      case 'diag:echo':
+        if (!this.allow(guest, 'misc')) return;
+        conn.send({ t: 'diag:echo', id: msg.id, payload: msg.payload });
+        return;
+
       case 'block': {
         if (!this.allow(guest, 'misc')) return;
         const target = this.reportTarget(guest, msg.roomId);

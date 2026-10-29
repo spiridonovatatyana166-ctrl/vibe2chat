@@ -23,7 +23,7 @@ const MIME: Record<string, string> = {
 };
 
 /** Маршруты клиентского приложения — для них отдаём index.html. */
-const SPA_ROUTES = new Set(['/', '/rules', '/privacy', '/support', '/admin']);
+const SPA_ROUTES = new Set(['/', '/rules', '/privacy', '/support', '/admin', '/check']);
 
 function securityHeaders(ctx: AppContext, res: ServerResponse): void {
   const turnstile = ctx.config.turnstileSiteKey ? ' https://challenges.cloudflare.com' : '';

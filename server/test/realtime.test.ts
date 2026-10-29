@@ -212,6 +212,20 @@ describe('безопасность событий', () => {
   });
 });
 
+describe('проверка связи', () => {
+  it('сервер возвращает большие сообщения без искажений', async () => {
+    const c = await TestClient.connect(srv, await createGuest(srv));
+    const payload = 'x'.repeat(36_000);
+    c.send({ t: 'diag:echo', id: 'big', payload });
+    const reply = await c.waitFor('diag:echo');
+    assert.equal(reply.id, 'big');
+    assert.equal(reply.payload.length, payload.length);
+    c.send({ t: 'diag:echo', id: 'huge', payload: 'x'.repeat(41_000) });
+    assert.equal((await c.waitFor('error')).code, 'bad-request');
+    c.close();
+  });
+});
+
 describe('модерация', () => {
   it('заблокированный пользователь больше не попадается тому же человеку', async () => {
     const { a, b, roomId } = await pair(srv);

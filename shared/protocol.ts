@@ -13,6 +13,7 @@ export const LIMITS = {
   wsMaxPayloadBytes: 64 * 1024,
   sdpMaxLength: 40_000,
   iceCandidateMaxLength: 1_000,
+  diagEchoMaxLength: 40_000,
 } as const;
 
 /** Языки, по которым работает фильтр подбора. "any" — без фильтра. */
@@ -88,7 +89,9 @@ export type ClientMessage =
   | { t: 'chat:send'; roomId: string; text: string; clientMsgId: string }
   | { t: 'peer:state'; roomId: string; camOn: boolean; micOn: boolean }
   | { t: 'report'; roomId: string; reason: ReportReason; details?: string }
-  | { t: 'block'; roomId: string };
+  | { t: 'block'; roomId: string }
+  /** Проверка связи: сервер возвращает те же данные (страница /check). */
+  | { t: 'diag:echo'; id: string; payload: string };
 
 // ─── Server → Client ────────────────────────────────────────────────────────
 
@@ -116,6 +119,7 @@ export type ServerMessage =
   | { t: 'block:ok'; roomId: string }
   | { t: 'banned'; until: number | null; reason: string }
   | { t: 'session:replaced' }
+  | { t: 'diag:echo'; id: string; payload: string }
   | { t: 'error'; code: ErrorCode; message: string; ref?: string };
 
 /** Коды закрытия WebSocket (диапазон 4000–4999 — для приложений). */

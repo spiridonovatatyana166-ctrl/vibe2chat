@@ -72,6 +72,9 @@ export function FooterLinks({ className }: { className?: string }) {
       <Link href="/support" className={link}>
         Поддержка
       </Link>
+      <Link href="/check" className={link}>
+        Проверка связи
+      </Link>
       <span className="text-muted/70">18+</span>
     </nav>
   );

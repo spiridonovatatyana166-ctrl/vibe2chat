@@ -411,6 +411,7 @@ export class CallController {
 
       case 'queue:waiting':
       case 'queue:left':
+      case 'diag:echo':
         return;
 
       case 'match':
@@ -573,7 +574,7 @@ export class CallController {
     if (!roomId) return;
     this.signaling.send({ t: 'room:failed', roomId });
     this.teardownPeer();
-    this.notify('Не удалось соединиться с собеседником. Ищем другого…', 'error');
+    this.notify('Не удалось соединиться с собеседником. Ищем другого… Если так каждый раз — откройте «Проверка связи» внизу страницы.', 'error');
     this.set({ lastRoomId: roomId });
     this.search();
   }

@@ -10,6 +10,7 @@ import { DEFAULT_APP_NAME } from './config';
 import { getConfig, getSession } from './lib/api';
 import { usePath } from './lib/router';
 import { AdminPage } from './pages/AdminPage';
+import { CheckPage } from './pages/CheckPage';
 import { HomePage } from './pages/HomePage';
 import { NotFoundPage, PrivacyPage, RulesPage, SupportPage } from './pages/InfoPages';
 
@@ -88,6 +89,8 @@ export function App() {
       return <SupportPage appName={appName} supportEmail={config?.supportEmail ?? null} />;
     case '/admin':
       return <AdminPage appName={appName} />;
+    case '/check':
+      return <CheckPage appName={appName} />;
     case '/':
       break;
     default:

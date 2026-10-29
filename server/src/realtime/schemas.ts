@@ -47,6 +47,11 @@ export const clientMessageSchema = z.discriminatedUnion('t', [
     details: z.string().max(LIMITS.reportDetailsMaxLength * 2).optional(),
   }),
   z.object({ t: z.literal('block'), roomId }),
+  z.object({
+    t: z.literal('diag:echo'),
+    id: z.string().min(1).max(32),
+    payload: z.string().max(LIMITS.diagEchoMaxLength),
+  }),
 ]);
 
 export function parseClientMessage(raw: string): ClientMessage | null {

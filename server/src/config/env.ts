@@ -56,6 +56,14 @@ const schema = z.object({
   TURN_USERNAME: emptyToUndef,
   TURN_CREDENTIAL: emptyToUndef,
   TURN_TTL_SECONDS: intFrom(6 * 60 * 60),
+  /**
+   * Бесплатный публичный TURN (Open Relay от Metered), если свой не настроен.
+   * Ничего регистрировать не нужно. Выключить: PUBLIC_TURN=off.
+   */
+  PUBLIC_TURN: z.enum(['on', 'off']).default('on'),
+  /** Cloudflare Realtime TURN (1000 ГБ/мес бесплатно): ключ TURN и его API-токен. */
+  CLOUDFLARE_TURN_KEY_ID: emptyToUndef,
+  CLOUDFLARE_TURN_API_TOKEN: emptyToUndef,
   /** relay — весь медиатрафик через TURN, собеседники не узнают IP друг друга. */
   ICE_TRANSPORT_POLICY: z.enum(['all', 'relay']).default('all'),
 
@@ -101,6 +109,9 @@ export interface AppConfig {
   turnUsername: string | null;
   turnCredential: string | null;
   turnTtlSeconds: number;
+  /** Используется встроенный бесплатный TURN (Open Relay). */
+  publicTurn: boolean;
+  cloudflareTurn: { keyId: string; apiToken: string } | null;
   iceTransportPolicy: 'all' | 'relay';
   turnstileSiteKey: string | null;
   turnstileSecretKey: string | null;
@@ -119,6 +130,21 @@ export interface AppConfig {
 }
 
 export class ConfigError extends Error {}
+
+/**
+ * Публичный бесплатный TURN Open Relay (metered.ca/tools/openrelay): общий секрет
+ * опубликован самим сервисом, учётки выдаются по схеме TURN REST API.
+ * Порты 80/443 и TCP/TLS проходят через большинство мобильных сетей и файрволов.
+ */
+export const PUBLIC_TURN = {
+  urls: [
+    'turn:staticauth.openrelay.metered.ca:80',
+    'turn:staticauth.openrelay.metered.ca:80?transport=tcp',
+    'turn:staticauth.openrelay.metered.ca:443',
+    'turns:staticauth.openrelay.metered.ca:443?transport=tcp',
+  ],
+  secret: 'openrelayprojectsecret',
+} as const;
 
 function normalizeOrigin(raw: string): string {
   try {
@@ -145,7 +171,11 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   if (e.SESSION_SECRET && e.SESSION_SECRET.length < 32) problems.push('SESSION_SECRET короче 32 символов');
   if (e.TURN_URLS.length > 0 && !e.TURN_SECRET && !(e.TURN_USERNAME && e.TURN_CREDENTIAL))
     problems.push('TURN_URLS заданы, но нет TURN_SECRET или пары TURN_USERNAME/TURN_CREDENTIAL');
-  if (e.ICE_TRANSPORT_POLICY === 'relay' && e.TURN_URLS.length === 0)
+  if (Boolean(e.CLOUDFLARE_TURN_KEY_ID) !== Boolean(e.CLOUDFLARE_TURN_API_TOKEN))
+    problems.push('CLOUDFLARE_TURN_KEY_ID и CLOUDFLARE_TURN_API_TOKEN задаются только вместе');
+  const hasOwnTurn = e.TURN_URLS.length > 0 || Boolean(e.CLOUDFLARE_TURN_KEY_ID);
+  const publicTurn = !hasOwnTurn && e.PUBLIC_TURN === 'on';
+  if (e.ICE_TRANSPORT_POLICY === 'relay' && !hasOwnTurn && !publicTurn)
     problems.push('ICE_TRANSPORT_POLICY=relay требует настроенного TURN (TURN_URLS)');
   if (Boolean(e.TURNSTILE_SITE_KEY) !== Boolean(e.TURNSTILE_SECRET_KEY))
     problems.push('TURNSTILE_SITE_KEY и TURNSTILE_SECRET_KEY задаются только вместе');
@@ -182,8 +212,13 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     trustProxy: e.TRUST_PROXY,
     logLevel: e.LOG_LEVEL,
     stunUrls: e.STUN_URLS.length > 0 ? e.STUN_URLS : ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'],
-    turnUrls: e.TURN_URLS,
-    turnSecret: e.TURN_SECRET ?? null,
+    turnUrls: publicTurn ? [...PUBLIC_TURN.urls] : e.TURN_URLS,
+    turnSecret: publicTurn ? PUBLIC_TURN.secret : (e.TURN_SECRET ?? null),
+    publicTurn,
+    cloudflareTurn:
+      e.CLOUDFLARE_TURN_KEY_ID && e.CLOUDFLARE_TURN_API_TOKEN
+        ? { keyId: e.CLOUDFLARE_TURN_KEY_ID, apiToken: e.CLOUDFLARE_TURN_API_TOKEN }
+        : null,
     turnUsername: e.TURN_USERNAME ?? null,
     turnCredential: e.TURN_CREDENTIAL ?? null,
     turnTtlSeconds: e.TURN_TTL_SECONDS,
