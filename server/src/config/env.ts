@@ -38,6 +38,8 @@ const schema = z.object({
   APP_NAME: z.string().min(1).max(40).default('VibeChat'),
   /** Публичный адрес сайта, например https://vibechat.example.com. Обязателен в production. */
   PUBLIC_ORIGIN: emptyToUndef,
+  /** Render подставляет адрес сервиса сам — используем его, если PUBLIC_ORIGIN не задан. */
+  RENDER_EXTERNAL_URL: emptyToUndef,
   /** Дополнительные разрешённые Origin через запятую (например, отдельный домен фронтенда). */
   EXTRA_ORIGINS: csv,
   SESSION_SECRET: emptyToUndef,
@@ -133,6 +135,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     throw new ConfigError(`Ошибка в переменных окружения:\n${details}`);
   }
   const e = parsed.data;
+  if (!e.PUBLIC_ORIGIN && e.RENDER_EXTERNAL_URL) e.PUBLIC_ORIGIN = e.RENDER_EXTERNAL_URL;
   const isProd = e.NODE_ENV === 'production';
   const problems: string[] = [];
 

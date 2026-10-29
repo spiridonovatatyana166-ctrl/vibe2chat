@@ -116,6 +116,11 @@ describe('конфигурация', () => {
     assert.equal(ok.secureCookies, true);
   });
 
+  it('на Render адрес сайта берётся из RENDER_EXTERNAL_URL', () => {
+    const c = loadConfig({ NODE_ENV: 'production', RENDER_EXTERNAL_URL: 'https://vibechat.onrender.com', SESSION_SECRET: 'x'.repeat(40) });
+    assert.equal(c.publicOrigin, 'https://vibechat.onrender.com');
+  });
+
   it('TURN без учётных данных — ошибка', () => {
     assert.throws(() => loadConfig({ TURN_URLS: 'turn:t.example.com' }), /TURN_SECRET/);
   });

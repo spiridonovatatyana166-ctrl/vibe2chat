@@ -1,0 +1,63 @@
+# Сборка APK в GitHub Actions (на раннерах GitHub уже установлен Android SDK).
+# Результат — во вкладке Actions → запуск → Artifacts.
+#
+# Настройки репозитория (Settings → Secrets and variables → Actions):
+#   Variables: VIBECHAT_SERVER_URL  — адрес сервера, например https://vibechat.example.com
+#              VIBECHAT_APP_NAME    — название приложения (необязательно)
+#   Secrets (для подписанного релиза, необязательно):
+#              ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
+name: Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths: ['android/**', '.github/workflows/android.yml']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    env:
+      VIBECHAT_SERVER_URL: ${{ vars.VIBECHAT_SERVER_URL }}
+      VIBECHAT_APP_NAME: ${{ vars.VIBECHAT_APP_NAME }}
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit-тесты
+        run: ./gradlew --no-daemon testDebugUnitTest
+
+      - name: Debug APK
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Подготовить ключ подписи
+        if: env.HAS_KEYSTORE == 'true'
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+
+      - name: Release APK (подписанный)
+        if: env.HAS_KEYSTORE == 'true'
+        env:
+          VIBECHAT_KEYSTORE_PATH: ${{ runner.temp }}/release.jks
+          VIBECHAT_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          VIBECHAT_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          VIBECHAT_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon assembleRelease
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vibechat-apk
+          path: |
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error

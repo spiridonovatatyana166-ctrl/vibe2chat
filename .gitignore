@@ -1,0 +1,10 @@
+node_modules/
+dist/
+client/dist/
+data/
+.env
+*.sqlite*
+e2e/*.png
+.DS_Store
+e2e/report/
+e2e/*.mp4

@@ -1,0 +1,33 @@
+# Бесплатное развёртывание на Render (Blueprint): Dashboard → New → Blueprint → выбрать репозиторий.
+# Ограничения бесплатного тарифа: засыпает через 15 минут без посетителей (первое открытие ~1 минута),
+# диск не сохраняется — жалобы и баны сбрасываются при перезапуске.
+services:
+  - type: web
+    name: vibechat
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /readyz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: '1'
+      - key: APP_NAME
+        value: VibeChat
+      - key: SESSION_SECRET
+        generateValue: true
+      # PUBLIC_ORIGIN не нужен: Render передаёт адрес сервиса в RENDER_EXTERNAL_URL.
+      # Логин и пароль первого администратора (пароль от 12 символов). Можно оставить пустыми.
+      - key: ADMIN_BOOTSTRAP_USERNAME
+        sync: false
+      - key: ADMIN_BOOTSTRAP_PASSWORD
+        sync: false
+      # Необязательно: бесплатный TURN от Metered (500 МБ/мес)
+      - key: TURN_URLS
+        sync: false
+      - key: TURN_USERNAME
+        sync: false
+      - key: TURN_CREDENTIAL
+        sync: false
